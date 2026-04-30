@@ -15,8 +15,29 @@ class CriticAgent:
     
     def execute(self, state: ResearchState) -> ResearchState:
         """Analyze all gathered data for quality and completeness"""
+        from datetime import datetime
+        
+        # Log input state
+        input_snapshot = {
+            "num_document_summaries": len(state.get("document_summaries", [])),
+            "num_web_results": len(state.get("web_results", [])),
+            "num_paper_results": len(state.get("paper_results", [])),
+            "sub_questions": state["plan"]["sub_questions"] if state.get("plan") else [],
+            "retry_count": state.get("retry_count", 0)
+        }
+        
         state["current_node"] = self.name
         state["status"] = "critiquing"
+        
+        execution_log = {
+            "node": self.name,
+            "started_at": datetime.utcnow().isoformat(),
+            "input": input_snapshot,
+            "output": None,
+            "error": None,
+            "completed_at": None,
+            "quality_calculations": {}
+        }
         
         try:
             logger.info(f"Critic starting for job {state['job_id']}")
@@ -39,11 +60,14 @@ class CriticAgent:
                 summaries=summaries_text
             )
             
+            execution_log["prompt_sent"] = prompt[:500] + "..." if len(prompt) > 500 else prompt
+            
             # Call LLM
             response = self.llm.invoke(prompt)
             
             # Extract JSON from response (handle cases where LLM adds extra text)
             content = response.content.strip()
+            execution_log["raw_llm_response"] = content[:1000] + "..." if len(content) > 1000 else content
             
             # Try to find JSON in the response
             if content.startswith("```json"):
@@ -57,6 +81,13 @@ class CriticAgent:
             coverage_score = self._calculate_coverage(state)
             source_quality = self._calculate_source_quality(state)
             overall_quality = (coverage_score + source_quality) / 2
+            
+            execution_log["quality_calculations"] = {
+                "coverage_score": coverage_score,
+                "source_quality": source_quality,
+                "overall_quality": overall_quality,
+                "calculation_method": "average of coverage and source quality"
+            }
             
             # Determine if retry is needed
             retry_needed = (
@@ -75,6 +106,16 @@ class CriticAgent:
             }
             
             state["critic_feedback"] = feedback
+            
+            # Log output
+            execution_log["output"] = {
+                "feedback": feedback,
+                "decision": "retry" if retry_needed else "proceed",
+                "num_gaps": len(feedback["gaps"]),
+                "num_contradictions": len(feedback.get("contradictions", []))
+            }
+            execution_log["completed_at"] = datetime.utcnow().isoformat()
+            
             logger.info(f"Critic evaluation: quality={overall_quality:.2f}, retry={retry_needed}")
             
         except Exception as e:
@@ -89,6 +130,11 @@ class CriticAgent:
                 "retry_needed": False,
                 "retry_queries": []
             }
+            execution_log["error"] = str(e)
+            execution_log["completed_at"] = datetime.utcnow().isoformat()
+        
+        # Add execution log to state
+        state["node_executions"].append(execution_log)
         
         return state
     

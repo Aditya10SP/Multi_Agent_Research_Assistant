@@ -6,6 +6,8 @@ import IntermediateResults from './components/IntermediateResults';
 import ReportViewer from './components/ReportViewer';
 import HistorySidebar from './components/HistorySidebar';
 import ComprehensiveProgress from './components/ComprehensiveProgress';
+import GraphFlowVisualization from './components/GraphFlowVisualization';
+import FlowDiagram from './components/FlowDiagram';
 import { useSSE } from './hooks/useSSE';
 
 const API_URL = 'http://localhost:8000';
@@ -18,6 +20,7 @@ function App() {
   const [currentNode, setCurrentNode] = useState('');
   const [completedNodes, setCompletedNodes] = useState([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [nodeExecutions, setNodeExecutions] = useState([]);
   
   const { events, connect, disconnect, reset } = useSSE();
 
@@ -36,6 +39,11 @@ function App() {
         if (!completedNodes.includes(latestEvent.node)) {
           setCompletedNodes(prev => [...prev, latestEvent.node]);
         }
+      }
+      
+      // Update node executions from events
+      if (latestEvent.node_executions) {
+        setNodeExecutions(latestEvent.node_executions);
       }
       
       if (latestEvent.event_type === 'complete') {
@@ -62,6 +70,7 @@ function App() {
       setFinalReport(null);
       setCurrentNode('');
       setCompletedNodes([]);
+      setNodeExecutions([]);
       reset();
 
       const response = await axios.post(`${API_URL}/research`, {
@@ -120,10 +129,30 @@ function App() {
         {/* Search Bar */}
         <SearchBar onSearch={handleSearch} isLoading={isLoading} />
 
+        {/* Flow Diagram - Visual representation of agent execution */}
+        {currentJobId && (
+          <div className="mt-6">
+            <FlowDiagram 
+              nodeExecutions={nodeExecutions}
+              currentNode={currentNode}
+            />
+          </div>
+        )}
+
         {/* Comprehensive Progress - Show when research is active or complete */}
         {currentJobId && (
           <div className="mt-6">
             <ComprehensiveProgress jobId={currentJobId} />
+          </div>
+        )}
+
+        {/* Graph Flow Visualization - Show detailed input/output flow */}
+        {currentJobId && nodeExecutions.length > 0 && (
+          <div className="mt-6 bg-slate-800 rounded-lg p-6">
+            <GraphFlowVisualization 
+              nodeExecutions={nodeExecutions}
+              currentNode={currentNode}
+            />
           </div>
         )}
 

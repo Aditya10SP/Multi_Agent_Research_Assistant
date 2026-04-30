@@ -81,7 +81,8 @@ async def create_research_job(request: ResearchRequest, db: Session = Depends(ge
             "status": "planning",
             "current_node": "",
             "error_log": [],
-            "retry_count": 0
+            "retry_count": 0,
+            "node_executions": []
         }
         
         # Save to database

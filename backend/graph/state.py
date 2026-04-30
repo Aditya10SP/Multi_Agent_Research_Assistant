@@ -16,3 +16,4 @@ class ResearchState(TypedDict):
     current_node: str
     error_log: Annotated[List[str], add]  # Use add operator to merge error logs from parallel nodes
     retry_count: int
+    node_executions: List[Dict]  # Detailed log of each node execution with inputs/outputs

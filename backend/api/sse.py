@@ -42,6 +42,7 @@ class SSEStream:
                     "final_report": status.get("final_report"),
                     "error_log": status.get("error_log", []),
                     "retry_count": status.get("retry_count", 0),
+                    "node_executions": status.get("node_executions", []),
                     "timestamp": datetime.utcnow().isoformat()
                 }
                 yield self._format_sse_event("update", event_data)

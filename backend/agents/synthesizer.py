@@ -16,8 +16,28 @@ class SynthesisAgent:
     
     def execute(self, state: ResearchState) -> ResearchState:
         """Synthesize all data into final report"""
+        from datetime import datetime as dt
+        
+        # Log input state
+        input_snapshot = {
+            "num_document_summaries": len(state.get("document_summaries", [])),
+            "num_web_results": len(state.get("web_results", [])),
+            "num_paper_results": len(state.get("paper_results", [])),
+            "quality_score": state.get("critic_feedback", {}).get("quality_score", 0),
+            "question": state["question"]
+        }
+        
         state["current_node"] = self.name
         state["status"] = "synthesizing"
+        
+        execution_log = {
+            "node": self.name,
+            "started_at": dt.utcnow().isoformat(),
+            "input": input_snapshot,
+            "output": None,
+            "error": None,
+            "completed_at": None
+        }
         
         try:
             logger.info(f"Synthesizer starting for job {state['job_id']}")
@@ -42,11 +62,14 @@ class SynthesisAgent:
                 formatted_summaries=formatted_summaries
             )
             
+            execution_log["prompt_sent"] = prompt[:500] + "..." if len(prompt) > 500 else prompt
+            
             # Call LLM
             response = self.llm.invoke(prompt)
             
             # Extract JSON from response (handle cases where LLM adds extra text)
             content = response.content.strip()
+            execution_log["raw_llm_response"] = content[:1000] + "..." if len(content) > 1000 else content
             
             # Try to find JSON in the response
             if content.startswith("```json"):
@@ -76,12 +99,28 @@ class SynthesisAgent:
             
             state["final_report"] = report
             state["status"] = "complete"
+            
+            # Log output
+            execution_log["output"] = {
+                "num_key_findings": len(report["key_findings"]),
+                "num_references": len(references),
+                "num_limitations": len(report["limitations"]),
+                "summary_length": len(report["summary"]),
+                "report_metadata": report["metadata"]
+            }
+            execution_log["completed_at"] = dt.utcnow().isoformat()
+            
             logger.info(f"Report generated with {len(report['key_findings'])} findings")
             
         except Exception as e:
             logger.error(f"Synthesizer failed: {str(e)}")
             state["error_log"].append(f"Synthesizer: {str(e)}")
             state["status"] = "failed"
+            execution_log["error"] = str(e)
+            execution_log["completed_at"] = dt.utcnow().isoformat()
+        
+        # Add execution log to state
+        state["node_executions"].append(execution_log)
         
         return state
     
