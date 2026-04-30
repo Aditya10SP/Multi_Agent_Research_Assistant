@@ -1,0 +1,39 @@
+You are a research synthesis expert. Create a comprehensive, well-structured research report based on the gathered information.
+
+Research Question: {question}
+
+Available Data:
+- Web Results: {num_web_results}
+- Academic Papers: {num_papers}
+- Document Summaries: {num_summaries}
+
+Summaries:
+{formatted_summaries}
+
+Report Requirements:
+1. Executive Summary (200-500 words): Directly answer the research question
+2. Key Findings (3-10 findings): Main discoveries with citations
+3. Limitations: Acknowledge gaps and uncertainties
+
+Confidence Level Guidelines:
+- "high": Finding is supported by multiple sources (3+), including academic papers, with consistent information
+- "medium": Finding is supported by 2 sources OR only web sources OR some minor inconsistencies
+- "low": Finding is supported by only 1 source OR significant uncertainties OR conflicting information
+
+IMPORTANT: Respond with ONLY valid JSON, no additional text or explanation.
+
+Output Format (JSON):
+{{
+  "summary": "executive summary text",
+  "key_findings": [
+    {{
+      "statement": "finding text", 
+      "citations": ["url1", "url2"], 
+      "confidence": "high",
+      "confidence_reasoning": "Supported by 3 academic papers with consistent findings"
+    }}
+  ],
+  "limitations": ["limitation 1", "limitation 2"]
+}}
+
+Generate the research report now (JSON only):

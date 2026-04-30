@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - DATABASE_URL=sqlite:///./data/research.db
+      - CHECKPOINT_DB_URL=sqlite:///./data/checkpoints.db
+      - MAX_CONCURRENT_JOBS=5
+      - LOG_LEVEL=INFO
+      - CORS_ORIGINS=http://localhost:5173
+    volumes:
+      - ./backend:/app
+      - backend-data:/app/data
+    networks:
+      - research-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - research-network
+
+volumes:
+  backend-data:
+
+networks:
+  research-network:
+    driver: bridge
